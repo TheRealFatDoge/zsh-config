@@ -18,4 +18,4 @@ ZSH_THEME=""
 plugins=(git zsh-autosuggestions zsh-syntax-highlighting zsh-interactive-cd)
 source $ZSH/oh-my-zsh.sh
 
-eval "$(oh-my-posh init zsh --config $HOME/.config/zsh-config/main.json)"
+eval "$("$HOME/.config/oh-my-posh" init zsh --config "$HOME/.config/zsh-config/main.json")"

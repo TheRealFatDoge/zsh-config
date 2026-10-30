@@ -3,33 +3,53 @@ set -eu
 
 config_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 source_file="$config_dir/zshrc"
-target_file="$HOME/.zshrc"
 
 if [ ! -f "$source_file" ]; then
     printf 'Missing configuration: %s\n' "$source_file" >&2
     exit 1
 fi
 
-if [ -L "$target_file" ] && [ "$(readlink "$target_file")" = "$source_file" ]; then
-    printf 'Already linked: %s -> %s\n' "$target_file" "$source_file"
-    exit 0
-fi
+oh_my_posh=
+for bin_dir in /usr/local/bin /usr/bin /opt/homebrew/bin "$HOME/.local/bin" "$HOME/bin"; do
+    if [ -f "$bin_dir/oh-my-posh" ] && [ -x "$bin_dir/oh-my-posh" ]; then
+        oh_my_posh="$bin_dir/oh-my-posh"
+        break
+    fi
+done
 
-if [ -d "$target_file" ] && [ ! -L "$target_file" ]; then
-    printf 'Refusing to replace a directory: %s\n' "$target_file" >&2
+if [ -z "$oh_my_posh" ]; then
+    printf 'oh-my-posh was not found in /usr/local/bin, /usr/bin, %s/.local/bin, or %s/bin\n' "$HOME" "$HOME" >&2
     exit 1
 fi
 
-if [ -e "$target_file" ] || [ -L "$target_file" ]; then
-    backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S)"
-    suffix=0
-    while [ -e "$backup_file" ] || [ -L "$backup_file" ]; do
-        suffix=$((suffix + 1))
-        backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S).$suffix"
-    done
-    mv -- "$target_file" "$backup_file"
-    printf 'Backed up existing configuration to %s\n' "$backup_file"
-fi
+link_file() {
+    source_file=$1
+    target_file=$2
 
-ln -s -- "$source_file" "$target_file"
-printf 'Linked %s -> %s\n' "$target_file" "$source_file"
+    if [ -L "$target_file" ] && [ "$(readlink "$target_file")" = "$source_file" ]; then
+        printf 'Already linked: %s -> %s\n' "$target_file" "$source_file"
+        return 0
+    fi
+
+    if [ -d "$target_file" ] && [ ! -L "$target_file" ] && [ "$target_file" = "$HOME/.zshrc" ]; then
+        printf 'Refusing to replace a directory: %s\n' "$target_file" >&2
+        return 1
+    fi
+
+    if [ -e "$target_file" ] || [ -L "$target_file" ]; then
+        backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S)"
+        suffix=0
+        while [ -e "$backup_file" ] || [ -L "$backup_file" ]; do
+            suffix=$((suffix + 1))
+            backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S).$suffix"
+        done
+        mv -- "$target_file" "$backup_file"
+        printf 'Backed up existing path to %s\n' "$backup_file"
+    fi
+
+    ln -s -- "$source_file" "$target_file"
+    printf 'Linked %s -> %s\n' "$target_file" "$source_file"
+}
+
+link_file "$oh_my_posh" "$(dirname -- "$config_dir")/oh-my-posh"
+link_file "$config_dir/zshrc" "$HOME/.zshrc"
