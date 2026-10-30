@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+config_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+source_file="$config_dir/zshrc"
+target_file="$HOME/.zshrc"
+
+if [ ! -f "$source_file" ]; then
+    printf 'Missing configuration: %s\n' "$source_file" >&2
+    exit 1
+fi
+
+if [ -L "$target_file" ] && [ "$(readlink "$target_file")" = "$source_file" ]; then
+    printf 'Already linked: %s -> %s\n' "$target_file" "$source_file"
+    exit 0
+fi
+
+if [ -d "$target_file" ] && [ ! -L "$target_file" ]; then
+    printf 'Refusing to replace a directory: %s\n' "$target_file" >&2
+    exit 1
+fi
+
+if [ -e "$target_file" ] || [ -L "$target_file" ]; then
+    backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S)"
+    suffix=0
+    while [ -e "$backup_file" ] || [ -L "$backup_file" ]; do
+        suffix=$((suffix + 1))
+        backup_file="$target_file.backup.$(date +%Y%m%d-%H%M%S).$suffix"
+    done
+    mv -- "$target_file" "$backup_file"
+    printf 'Backed up existing configuration to %s\n' "$backup_file"
+fi
+
+ln -s -- "$source_file" "$target_file"
+printf 'Linked %s -> %s\n' "$target_file" "$source_file"
